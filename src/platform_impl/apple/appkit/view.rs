@@ -6,15 +6,17 @@ use std::rc::Rc;
 
 use objc2::rc::Retained;
 use objc2::runtime::{AnyObject, Sel};
-use objc2::{define_class, msg_send, DefinedClass, MainThreadMarker};
+use objc2::{define_class, msg_send, sel, DefinedClass, MainThreadMarker};
 use objc2_app_kit::{
     NSApplication, NSCursor, NSEvent, NSEventPhase, NSResponder, NSTextInputClient,
     NSTrackingRectTag, NSView, NSWindow,
 };
 use objc2_foundation::{
     NSArray, NSAttributedString, NSAttributedStringKey, NSCopying, NSMutableAttributedString,
-    NSNotFound, NSObject, NSPoint, NSRange, NSRect, NSSize, NSString, NSUInteger,
+    NSNotFound, NSObject, NSPoint, NSRange, NSRect, NSRunLoop, NSRunLoopCommonModes, NSSize,
+    NSString, NSUInteger,
 };
+use objc2_quartz_core::{CADisplayLink, CAFrameRateRangeMake};
 
 use super::app_state::AppState;
 use super::cursor::{default_cursor, invisible_cursor};
@@ -198,6 +200,12 @@ define_class!(
             self.ivars().app_state.handle_redraw(window_id(&self.window()));
 
             // This is a direct subclass of NSView, no need to call superclass' drawRect:
+        }
+
+        #[unsafe(method(step:))]
+        fn step(&self, _sender: &CADisplayLink) {
+            trace_scope!("step:");
+            unsafe { self.setNeedsDisplay(true) };
         }
 
         #[unsafe(method(acceptsFirstResponder))]
@@ -806,6 +814,13 @@ impl WinitView {
         let this: Retained<Self> = unsafe { msg_send![super(this), init] };
 
         *this.ivars().input_source.borrow_mut() = this.current_input_source();
+
+        unsafe {
+            let display_link = this.displayLinkWithTarget_selector(&this, sel!(step:));
+            let frame_rate_range = CAFrameRateRangeMake(60.0, 120.0, 120.0);
+            display_link.setPreferredFrameRateRange(frame_rate_range);
+            display_link.addToRunLoop_forMode(&NSRunLoop::currentRunLoop(), NSRunLoopCommonModes)
+        }
 
         this
     }
