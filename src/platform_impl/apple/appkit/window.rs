@@ -100,7 +100,7 @@ impl CoreWindow for Window {
     }
 
     fn request_redraw(&self) {
-        // self.maybe_wait_on_main(|delegate| delegate.request_redraw());
+        self.maybe_wait_on_main(|delegate| delegate.request_redraw());
     }
 
     fn pre_present_notify(&self) {

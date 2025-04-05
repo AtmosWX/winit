@@ -45,6 +45,8 @@ pub(super) struct AppState {
     pending_redraw: RefCell<Vec<WindowId>>,
     // NOTE: This is strongly referenced by our `NSWindowDelegate` and our `NSView` subclass, and
     // as such should be careful to not add fields that, in turn, strongly reference those.
+    last_redraw_id: Cell<u64>,
+    redraw_id: Cell<u64>,
 }
 
 // SAFETY: Creating `MainThreadBound` in a `const` context, where there is no concept of the
@@ -83,6 +85,8 @@ impl AppState {
             start_time: Cell::new(None),
             wait_timeout: Cell::new(None),
             pending_redraw: RefCell::new(vec![]),
+            last_redraw_id: Cell::new(0),
+            redraw_id: Cell::new(0),
         });
 
         GLOBAL.get(mtm).set(this.clone()).expect("application state can only be set once");
@@ -261,6 +265,10 @@ impl AppState {
         }
     }
 
+    pub fn increment_redraw(self: &Rc<Self>) {
+        self.redraw_id.replace(self.redraw_id.get() + 1);
+    }
+
     pub fn queue_redraw(&self, window_id: WindowId) {
         let mut pending_redraw = self.pending_redraw.borrow_mut();
         if !pending_redraw.contains(&window_id) {
@@ -353,12 +361,16 @@ impl AppState {
             return;
         }
 
-        let redraw = mem::take(&mut *self.pending_redraw.borrow_mut());
-        for window_id in redraw {
-            self.with_handler(|app, event_loop| {
-                app.window_event(event_loop, window_id, WindowEvent::RedrawRequested);
-            });
+        if self.last_redraw_id.get() < self.redraw_id.get() {
+            self.last_redraw_id.replace(self.redraw_id.get());
+            let redraw = mem::take(&mut *self.pending_redraw.borrow_mut());
+            for window_id in redraw {
+                self.with_handler(|app, event_loop| {
+                    app.window_event(event_loop, window_id, WindowEvent::RedrawRequested);
+                });
+            }
         }
+
         self.with_handler(|app, event_loop| {
             app.about_to_wait(event_loop);
         });

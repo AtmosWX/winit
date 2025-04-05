@@ -197,6 +197,7 @@ define_class!(
         fn draw_rect(&self, _rect: NSRect) {
             trace_scope!("drawRect:");
 
+            self.ivars().app_state.increment_redraw();
             self.ivars().app_state.handle_redraw(window_id(&self.window()));
 
             // This is a direct subclass of NSView, no need to call superclass' drawRect:
@@ -205,7 +206,7 @@ define_class!(
         #[unsafe(method(step:))]
         fn step(&self, _sender: &CADisplayLink) {
             trace_scope!("step:");
-            unsafe { self.setNeedsDisplay(true) };
+            self.ivars().app_state.increment_redraw();
         }
 
         #[unsafe(method(acceptsFirstResponder))]
