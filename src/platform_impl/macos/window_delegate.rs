@@ -911,7 +911,7 @@ impl WindowDelegate {
     }
 
     pub fn request_redraw(&self) {
-        self.ivars().app_delegate.queue_redraw(self.window().id());
+        // Redrawing is handled by CADisplayLink
     }
 
     #[inline]

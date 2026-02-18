@@ -313,31 +313,10 @@ impl ApplicationDelegate {
     }
 
     pub fn handle_redraw(&self, window_id: WindowId) {
-        let mtm = MainThreadMarker::from(self);
-        // Redraw request might come out of order from the OS.
-        // -> Don't go back into the event handler when our callstack originates from there
-        if !self.ivars().event_handler.in_use() {
-            self.handle_event(Event::WindowEvent {
-                window_id: RootWindowId(window_id),
-                event: WindowEvent::RedrawRequested,
-            });
-
-            // `pump_events` will request to stop immediately _after_ dispatching RedrawRequested
-            // events as a way to ensure that `pump_events` can't block an external loop
-            // indefinitely
-            if self.ivars().stop_on_redraw.get() {
-                let app = NSApplication::sharedApplication(mtm);
-                stop_app_immediately(&app);
-            }
-        }
-    }
-
-    pub fn queue_redraw(&self, window_id: WindowId) {
-        let mut pending_redraw = self.ivars().pending_redraw.borrow_mut();
-        if !pending_redraw.contains(&window_id) {
-            pending_redraw.push(window_id);
-        }
-        self.ivars().run_loop.wakeup();
+        self.handle_event(Event::WindowEvent {
+            window_id: RootWindowId(window_id),
+            event: WindowEvent::RedrawRequested,
+        });
     }
 
     #[track_caller]

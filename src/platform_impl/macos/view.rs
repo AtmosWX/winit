@@ -15,6 +15,7 @@ use objc2_foundation::{
     NSMutableAttributedString, NSNotFound, NSNotificationCenter, NSObject, NSObjectProtocol,
     NSPoint, NSRange, NSRect, NSSize, NSString, NSUInteger,
 };
+use objc2_quartz_core::CADisplayLink;
 
 use super::app_state::ApplicationDelegate;
 use super::cursor::{default_cursor, invisible_cursor};
@@ -208,7 +209,15 @@ declare_class!(
                 self.ivars().app_delegate.handle_redraw(window.id());
             }
 
-            // This is a direct subclass of NSView, no need to call superclass' drawRect:
+            // // This is a direct subclass of NSView, no need to call superclass' drawRect:
+        }
+
+        #[method(step:)]
+        fn step(&self, _sender: &CADisplayLink) {
+            trace_scope!("displayLinkFire:");
+            unsafe {
+              self.setNeedsDisplay(true);
+            }
         }
 
         #[method(acceptsFirstResponder)]
